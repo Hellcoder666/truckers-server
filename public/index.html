@@ -181,7 +181,9 @@
   .delivery-item.assigned .item-check{background:#4fc3f7;border-color:#4fc3f7;color:#000;font-size:10px;font-weight:700;}
 
   /* ─── ASSIGN POPUP ─── */
-  .assign-overlay{position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:300;display:flex;align-items:flex-end;justify-content:center;}
+  .assign-btn{background:rgba(255,183,77,.15);border:1.5px solid #ffb74d;border-radius:8px;color:#ffb74d;font-size:14px;padding:4px 8px;cursor:pointer;margin-left:4px;flex-shrink:0;}
+  .assign-btn:active{background:rgba(255,183,77,.35);}
+position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:300;display:flex;align-items:flex-end;justify-content:center;}
   .assign-overlay.hidden{display:none;}
   .assign-sheet{background:var(--surface);border-radius:20px 20px 0 0;padding:24px 20px 36px;width:100%;max-width:480px;}
   .assign-title{font-family:'Syne',sans-serif;font-size:16px;font-weight:800;margin-bottom:6px;color:var(--accent);}
@@ -1288,6 +1290,7 @@ function renderSchedule(){
       </div>
       ${hasInfo?`<span class="info-btn" onclick="showLocPopup('${item.title.replace(/'/g,"\\'")}',event)">${hasFoto&&!hasLoc?'📷':'📍'}</span>`:''}
       ${bl?`<div class="item-badge badge-${item.badge}">${bl}</div>`:''}
+      ${isLeader&&!done?`<button class="assign-btn" onclick="openAssignSheet(${idx},'${item.title.replace(/'/g,"\\'")}',event)" title="Tilldela">👤</button>`:''}
     </div>`;
   }
 
