@@ -174,6 +174,34 @@
   .auth-btn:active{opacity:0.8;}
   .auth-error{color:#ef5350;font-size:13px;margin-top:10px;text-align:center;min-height:18px;}
   .sync-indicator{position:fixed;top:12px;right:12px;font-size:10px;color:var(--muted);z-index:50;transition:opacity 0.3s;}
+
+  /* ─── ASSIGNED STATE ─── */
+  .delivery-item.assigned{background:rgba(79,195,247,.10);border-color:#4fc3f7;}
+  .delivery-item.assigned .item-title{color:#4fc3f7;}
+  .delivery-item.assigned .item-check{background:#4fc3f7;border-color:#4fc3f7;color:#000;font-size:10px;font-weight:700;}
+
+  /* ─── ASSIGN POPUP ─── */
+  .assign-overlay{position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:300;display:flex;align-items:flex-end;justify-content:center;}
+  .assign-overlay.hidden{display:none;}
+  .assign-sheet{background:var(--surface);border-radius:20px 20px 0 0;padding:24px 20px 36px;width:100%;max-width:480px;}
+  .assign-title{font-family:'Syne',sans-serif;font-size:16px;font-weight:800;margin-bottom:6px;color:var(--accent);}
+  .assign-task{font-size:13px;color:var(--muted);margin-bottom:18px;border-left:3px solid var(--accent);padding-left:10px;}
+  .assign-users{display:flex;flex-direction:column;gap:8px;max-height:260px;overflow-y:auto;margin-bottom:16px;}
+  .assign-user-btn{padding:12px 16px;background:var(--surface2);border:1.5px solid var(--border);border-radius:12px;color:var(--text);font-size:14px;font-family:'DM Sans',sans-serif;cursor:pointer;text-align:left;transition:all .2s;}
+  .assign-user-btn:active,.assign-user-btn.selected{border-color:var(--accent);background:rgba(79,195,247,.12);color:var(--accent);}
+  .assign-cancel{width:100%;padding:12px;background:none;border:1.5px solid var(--border);border-radius:12px;color:var(--muted);font-size:14px;font-family:'DM Sans',sans-serif;cursor:pointer;}
+
+  /* ─── NOTIFICATION BANNER ─── */
+  .notif-banner{position:fixed;top:0;left:0;right:0;z-index:400;background:var(--surface);border-bottom:2px solid #4fc3f7;padding:16px 18px;display:none;}
+  .notif-banner.show{display:block;}
+  .notif-banner-title{font-family:'Syne',sans-serif;font-size:14px;font-weight:800;color:#4fc3f7;margin-bottom:4px;}
+  .notif-task{font-size:13px;color:var(--text);margin-bottom:14px;}
+  .notif-btns{display:flex;gap:10px;}
+  .notif-accept{flex:1;padding:11px;background:#4caf50;border:none;border-radius:10px;color:#fff;font-size:14px;font-weight:700;font-family:'Syne',sans-serif;cursor:pointer;}
+  .notif-decline{flex:1;padding:11px;background:none;border:1.5px solid var(--border);border-radius:10px;color:var(--muted);font-size:14px;font-family:'DM Sans',sans-serif;cursor:pointer;}
+
+  /* ─── LEADER BADGE ─── */
+  .leader-badge{font-size:10px;background:rgba(255,183,77,.15);color:#ffb74d;border:1px solid #ffb74d;border-radius:10px;padding:2px 7px;margin-left:6px;}
 </style>
 </head>
 <body>
@@ -199,6 +227,26 @@
       <button class="auth-btn" onclick="doRegister()">Skapa konto</button>
     </div>
     <div class="auth-error" id="authError"></div>
+  </div>
+</div>
+
+<!-- Tilldela uppgift (teamleader) -->
+<div class="assign-overlay hidden" id="assignOverlay" onclick="closeAssignSheet(event)">
+  <div class="assign-sheet" id="assignSheet">
+    <div class="assign-title">Tilldela uppgift</div>
+    <div class="assign-task" id="assignTaskLabel"></div>
+    <div class="assign-users" id="assignUserList"></div>
+    <button class="assign-cancel" onclick="closeAssignSheet()">Avbryt</button>
+  </div>
+</div>
+
+<!-- Notis-banner för inkommande förfrågan -->
+<div class="notif-banner" id="notifBanner">
+  <div class="notif-banner-title">📋 Du har blivit tilldelad en uppgift</div>
+  <div class="notif-task" id="notifTask"></div>
+  <div class="notif-btns">
+    <button class="notif-accept" onclick="respondAssignment(true)">✓ Acceptera</button>
+    <button class="notif-decline" onclick="respondAssignment(false)">Avböj</button>
   </div>
 </div>
 <div class="sync-indicator" id="syncIndicator"></div>
@@ -227,7 +275,7 @@
       </div>
     </div>
     <div class="header-right" id="headerRight">
-      <span class="user-badge" id="userName"></span><button class="logout-btn" onclick="doLogout()">Logga ut</button><div class="current-time" id="clock">--:--</div>
+      <span class="user-badge" id="userName"></span><span class="leader-badge" id="leaderBadge" style="display:none">LEADER</span><button class="logout-btn" onclick="doLogout()">Logga ut</button><div class="current-time" id="clock">--:--</div>
     </div>
   </div>
   <div class="omrade-switcher">
@@ -459,8 +507,6 @@ const schedule = {
     {time:'08:00',title:'PROVTUR',desc:'+säck & vagn',badge:'prov'},
     {time:'08:45',title:'SCANNINGSVAGNAR',badge:'scan'},
     {time:null,title:'MEDICINLÅDA',badge:'med'},
-    {time:null,title:'SOPOR – NB:U2 2 HEL',badge:'sopor'},
-    {time:null,title:'SOPOR – NA:U2 2 HEL',badge:'sopor'},
     {time:null,title:'L7:U1 Soprum 4 HEL',badge:'other'},
     {time:null,title:'L7:U1 Miljö 1 HALV',badge:'other'},
     {time:null,title:'L4:U1 2 HALV',badge:'other'},
@@ -485,15 +531,12 @@ const schedule = {
     {time:null,title:'MEDICARRIER',badge:'other'},
     {time:null,title:'WELL & MILJÖRUM',badge:'other'},
     {time:null,title:'LAPPAR',badge:'other'},
-    {time:null,title:'MATAVFALL',badge:'sopor'},
     {time:'10:30',title:'POST',badge:'other'},
     {time:'12:30',title:'PROVTUR',badge:'prov'},
     {time:null,title:'MEDICINLÅDA',badge:'med'},
     {time:null,title:'PAKET',badge:'other'},
     {time:'13:00',title:'STERIL NB403',badge:'steril'},
     {time:'14:30',title:'PROVTUR',badge:'prov'},
-    {time:null,title:'SOPOR – NB:U2 2 HEL',badge:'sopor'},
-    {time:null,title:'SOPOR – NA:U2 2 HEL',badge:'sopor'},
     {time:'15:00',title:'STERIL NA1 & NA2',badge:'steril'},
   ],
   tisdag:[
@@ -502,8 +545,6 @@ const schedule = {
     {time:'08:00',title:'PROVTUR',desc:'+säck & vagn',badge:'prov'},
     {time:'08:45',title:'SCANNINGSVAGNAR',badge:'scan'},
     {time:null,title:'MEDICINLÅDA',badge:'med'},
-    {time:null,title:'SOPOR – NB:U2 2 HEL',badge:'sopor'},
-    {time:null,title:'SOPOR – NA:U2 2 HEL',badge:'sopor'},
     {time:null,title:'L7:U1 Soprum 4 HEL',badge:'other'},
     {time:null,title:'L7:U1 Miljö 1 HALV',badge:'other'},
     {time:null,title:'L4:U1 2 HALV',badge:'other'},
@@ -522,15 +563,12 @@ const schedule = {
     {time:null,title:'MEDICARRIER',badge:'other'},
     {time:null,title:'WELL & MILJÖRUM',badge:'other'},
     {time:null,title:'LAPPAR',badge:'other'},
-    {time:null,title:'MATAVFALL (vid behov)',badge:'sopor'},
     {time:'10:30',title:'POST',badge:'other'},
     {time:'12:30',title:'PROVTUR',badge:'prov'},
     {time:null,title:'MEDICINLÅDA',badge:'med'},
     {time:null,title:'PAKET',badge:'other'},
     {time:'13:00',title:'STERIL NB403',badge:'steril'},
     {time:'14:30',title:'PROVTUR',badge:'prov'},
-    {time:null,title:'SOPOR – NB:U2 2 HEL',badge:'sopor'},
-    {time:null,title:'SOPOR – NA:U2 2 HEL',badge:'sopor'},
     {time:'15:00',title:'STERIL NA1 & NA2',badge:'steril'},
   ],
   onsdag:[
@@ -539,8 +577,6 @@ const schedule = {
     {time:'08:00',title:'PROVTUR',desc:'+säck & vagn',badge:'prov'},
     {time:'08:45',title:'SCANNINGSVAGNAR',badge:'scan'},
     {time:null,title:'MEDICINLÅDA',badge:'med'},
-    {time:null,title:'SOPOR – NB:U2 2 HEL',badge:'sopor'},
-    {time:null,title:'SOPOR – NA:U2 2 HEL',badge:'sopor'},
     {time:null,title:'L7:U1 Soprum 4 HEL',badge:'other'},
     {time:null,title:'L7:U1 Miljö 1 HALV',badge:'other'},
     {time:null,title:'L4:U1 2 HALV',badge:'other'},
@@ -567,15 +603,12 @@ const schedule = {
     {time:null,title:'MEDICARRIER',badge:'other'},
     {time:null,title:'WELL & MILJÖRUM',badge:'other'},
     {time:null,title:'LAPPAR',badge:'other'},
-    {time:null,title:'MATAVFALL',badge:'sopor'},
     {time:'10:30',title:'POST',badge:'other'},
     {time:'12:30',title:'PROVTUR',badge:'prov'},
     {time:null,title:'MEDICINLÅDA',badge:'med'},
     {time:null,title:'PAKET',badge:'other'},
     {time:'13:00',title:'STERIL NB403',badge:'steril'},
     {time:'14:30',title:'PROVTUR',badge:'prov'},
-    {time:null,title:'SOPOR – NB:U2 2 HEL',badge:'sopor'},
-    {time:null,title:'SOPOR – NA:U2 2 HEL',badge:'sopor'},
     {time:'15:00',title:'STERIL NA1 & NA2',badge:'steril'},
   ],
   torsdag:[
@@ -584,8 +617,6 @@ const schedule = {
     {time:'08:00',title:'PROVTUR',desc:'+säck & vagn',badge:'prov'},
     {time:'08:45',title:'SCANNINGSVAGNAR',badge:'scan'},
     {time:null,title:'MEDICINLÅDA',badge:'med'},
-    {time:null,title:'SOPOR – NB:U2 2 HEL',badge:'sopor'},
-    {time:null,title:'SOPOR – NA:U2 2 HEL',badge:'sopor'},
     {time:null,title:'L7:U1 Soprum 4 HEL',badge:'other'},
     {time:null,title:'L7:U1 Miljö 1 HALV',badge:'other'},
     {time:null,title:'L1:U1 Miljö 4 HEL',badge:'other'},
@@ -609,15 +640,12 @@ const schedule = {
     {time:null,title:'MEDICARRIER',badge:'other'},
     {time:null,title:'WELL & MILJÖRUM',badge:'other'},
     {time:null,title:'LAPPAR',badge:'other'},
-    {time:null,title:'MATAVFALL (vid behov)',badge:'sopor'},
     {time:'10:30',title:'POST',badge:'other'},
     {time:'12:30',title:'PROVTUR',badge:'prov'},
     {time:null,title:'MEDICINLÅDA',badge:'med'},
     {time:null,title:'PAKET',badge:'other'},
     {time:'13:00',title:'STERIL NB403',badge:'steril'},
     {time:'14:30',title:'PROVTUR',badge:'prov'},
-    {time:null,title:'SOPOR – NB:U2 2 HEL',badge:'sopor'},
-    {time:null,title:'SOPOR – NA:U2 2 HEL',badge:'sopor'},
     {time:'15:00',title:'STERIL NA1 & NA2',badge:'steril'},
   ],
   fredag:[
@@ -626,8 +654,6 @@ const schedule = {
     {time:'08:00',title:'PROVTUR',desc:'+säck & vagn',badge:'prov'},
     {time:'08:45',title:'SCANNINGSVAGNAR',badge:'scan'},
     {time:null,title:'MEDICINLÅDA',badge:'med'},
-    {time:null,title:'SOPOR – NB:U2 2 HEL',badge:'sopor'},
-    {time:null,title:'SOPOR – NA:U2 2 HEL',badge:'sopor'},
     {time:null,title:'L7:U1 Soprum 4 HEL',badge:'other'},
     {time:null,title:'L7:U1 Miljö 1 HALV',badge:'other'},
     {time:null,title:'L4:U1 2 HALV',badge:'other'},
@@ -654,15 +680,12 @@ const schedule = {
     {time:null,title:'MEDICARRIER',badge:'other'},
     {time:null,title:'WELL & MILJÖRUM',badge:'other'},
     {time:null,title:'LAPPAR',badge:'other'},
-    {time:null,title:'MATAVFALL',badge:'sopor'},
     {time:'10:30',title:'POST',badge:'other'},
     {time:'12:30',title:'PROVTUR',badge:'prov'},
     {time:null,title:'MEDICINLÅDA',badge:'med'},
     {time:null,title:'PAKET',badge:'other'},
     {time:'13:00',title:'STERIL NB403',badge:'steril'},
     {time:'14:30',title:'PROVTUR',badge:'prov'},
-    {time:null,title:'SOPOR – NB:U2 2 HEL',badge:'sopor'},
-    {time:null,title:'SOPOR – NA:U2 2 HEL',badge:'sopor'},
     {time:'15:00',title:'STERIL NA1 & NA2',badge:'steril'},
   ]
 };
@@ -675,7 +698,6 @@ const schedule2 = {
   måndag:[
     {time:'07:00',title:'STERIL QD61',badge:'steril'},
     {time:null,title:'MEDICINLÅDA',badge:'med'},
-    {time:null,title:'SOPOR',badge:'sopor'},
     {time:null,title:'Q2U1 2 HEL',badge:'other'},
     {time:null,title:'Q6U1 4 HEL',badge:'other'},
     {time:null,title:'Q2U1 2 HEL',badge:'other'},
@@ -686,7 +708,6 @@ const schedule2 = {
     {time:null,title:'P1U1 2 HEL',badge:'other'},
     {time:null,title:'D1U1 1 HALv',badge:'other'},
     {time:null,title:'Centrum Miljö 1 HALv',badge:'other'},
-    {time:null,title:'Centrum Soprum 1 HEL',badge:'sopor'},
     {time:null,title:'Oron B1 2 HEL',badge:'other'},
     {time:null,title:'B3U1 Miljö 1 HALv',badge:'other'},
     {time:null,title:'JIT',badge:'jit'},
@@ -695,12 +716,10 @@ const schedule2 = {
     {time:'09:00',title:'MATVAGN',badge:'other'},
     {time:null,title:'MER KÖRRIER',badge:'other'},
     {time:null,title:'WELL & MILJÖRUM',badge:'other'},
-    {time:null,title:'MATAVFALL',badge:'sopor'},
     {time:'10:30',title:'POST + REPRO',badge:'other'},
     {time:null,title:'GAS HUB1',badge:'other'},
     {time:'12:00',title:'GAS HUB1',badge:'other'},
     {time:null,title:'MEDICINLÅDA',badge:'med'},
-    {time:null,title:'SOPOR',badge:'sopor'},
     {time:null,title:'SKIFTA SOPKOMP',badge:'other'},
     {time:'11:30',title:'STERIL A206',badge:'steril'},
     {time:null,title:'MATAVAGN Ullbana',badge:'other'},
@@ -716,7 +735,6 @@ const schedule2 = {
   tisdag:[
     {time:'07:00',title:'STERIL QD61',badge:'steril'},
     {time:null,title:'MEDICINLÅDA',badge:'med'},
-    {time:null,title:'SOPOR',badge:'sopor'},
     {time:null,title:'Q2U1 2 HEL',badge:'other'},
     {time:null,title:'Q6U1 4 HEL',badge:'other'},
     {time:null,title:'R8U1 1 HALv',badge:'other'},
@@ -727,7 +745,6 @@ const schedule2 = {
     {time:null,title:'A206 1 HALv',badge:'other'},
     {time:null,title:'F4U1 4 HEL',badge:'other'},
     {time:null,title:'Centrum Miljö 4 HALv',badge:'other'},
-    {time:null,title:'Centrum Soprum 2 HEL',badge:'sopor'},
     {time:null,title:'Oron B1 2 HEL',badge:'other'},
     {time:null,title:'B3U1 Miljö 1 HALv',badge:'other'},
     {time:null,title:'JIT',badge:'jit'},
@@ -736,13 +753,11 @@ const schedule2 = {
     {time:null,title:'QC V 4-0',badge:'other'},
     {time:null,title:'WELL & MILJÖRUM',badge:'other'},
     {time:null,title:'LAPPAR',badge:'other'},
-    {time:null,title:'MATAVFALL (vid behov)',badge:'sopor'},
     {time:null,title:'MEDICARRIER',badge:'other'},
     {time:'10:30',title:'POST + REPRO',badge:'other'},
     {time:null,title:'GAS HUB1',badge:'other'},
     {time:'12:00',title:'GAS HUB1',badge:'other'},
     {time:null,title:'MEDICINLÅDA',badge:'med'},
-    {time:null,title:'SOPOR',badge:'sopor'},
     {time:'11:30',title:'STERIL A206',badge:'steril'},
     {time:null,title:'Q6U1 4 HEL',badge:'other'},
     {time:null,title:'Q2U1 2 HEL',badge:'other'},
@@ -756,7 +771,6 @@ const schedule2 = {
   onsdag:[
     {time:'07:00',title:'STERIL QD61',badge:'steril'},
     {time:null,title:'MEDICINLÅDA',badge:'med'},
-    {time:null,title:'SOPOR',badge:'sopor'},
     {time:null,title:'Q2U1 2 HEL',badge:'other'},
     {time:null,title:'Q6U1 4 HEL',badge:'other'},
     {time:null,title:'R8U1 1 HALv',badge:'other'},
@@ -764,7 +778,6 @@ const schedule2 = {
     {time:null,title:'A206 1 HALv',badge:'other'},
     {time:null,title:'D1U1 1 HALv',badge:'other'},
     {time:null,title:'Centrum Miljö 1 HALv',badge:'other'},
-    {time:null,title:'Centrum Soprum 1 HALv',badge:'sopor'},
     {time:null,title:'Oron B1 2 HEL',badge:'other'},
     {time:null,title:'B3U1 Miljö 1 HALv',badge:'other'},
     {time:null,title:'JIT',badge:'jit'},
@@ -773,12 +786,10 @@ const schedule2 = {
     {time:null,title:'MEDICARRIER',badge:'other'},
     {time:null,title:'LAPPAR',badge:'other'},
     {time:null,title:'WELL & MILJÖRUM',badge:'other'},
-    {time:null,title:'MATAVFALL',badge:'sopor'},
     {time:'10:30',title:'POST + REPRO',badge:'other'},
     {time:null,title:'GAS HUB1',badge:'other'},
     {time:'12:00',title:'GAS HUB1',badge:'other'},
     {time:null,title:'MEDICINLÅDA',badge:'med'},
-    {time:null,title:'SOPOR',badge:'sopor'},
     {time:null,title:'SKIFTA SOPKOMP',badge:'other'},
     {time:'11:30',title:'STERIL A206',badge:'steril'},
     {time:null,title:'Q6U1 4 HEL',badge:'other'},
@@ -793,7 +804,6 @@ const schedule2 = {
   torsdag:[
     {time:'07:00',title:'STERIL QD61',badge:'steril'},
     {time:null,title:'MEDICINLÅDA',badge:'med'},
-    {time:null,title:'SOPOR',badge:'sopor'},
     {time:null,title:'Q2U1 2 HEL',badge:'other'},
     {time:null,title:'Q6U1 4 HEL',badge:'other'},
     {time:null,title:'R8U1 1 HALv',badge:'other'},
@@ -801,7 +811,6 @@ const schedule2 = {
     {time:null,title:'P5U1 1 HALv',badge:'other'},
     {time:null,title:'A206 1 HALv',badge:'other'},
     {time:null,title:'R1U1 1 HALv',badge:'other'},
-    {time:null,title:'Centrum Soprum 2 HEL',badge:'sopor'},
     {time:null,title:'Centrum Miljö 1 HALv',badge:'other'},
     {time:null,title:'H2U1 1 HALv',badge:'other'},
     {time:null,title:'B3U1 Miljö 1 HALv',badge:'other'},
@@ -811,12 +820,10 @@ const schedule2 = {
     {time:null,title:'MEDICARRIER',badge:'other'},
     {time:null,title:'LAPPAR',badge:'other'},
     {time:null,title:'WELL & MILJÖRUM',badge:'other'},
-    {time:null,title:'MATAVFALL (vid behov)',badge:'sopor'},
     {time:'10:30',title:'POST + REPRO',badge:'other'},
     {time:null,title:'GAS HUB1',badge:'other'},
     {time:'12:00',title:'GAS HUB1',badge:'other'},
     {time:null,title:'MEDICINLÅDA',badge:'med'},
-    {time:null,title:'SOPOR',badge:'sopor'},
     {time:null,title:'PAKET',badge:'other'},
     {time:'11:30',title:'STERIL A206',badge:'steril'},
     {time:null,title:'Q6U1 4 HEL',badge:'other'},
@@ -831,7 +838,6 @@ const schedule2 = {
   fredag:[
     {time:'07:00',title:'STERIL QD61',badge:'steril'},
     {time:null,title:'MEDICINLÅDA',badge:'med'},
-    {time:null,title:'SOPOR',badge:'sopor'},
     {time:null,title:'Q2U1 2 HEL',badge:'other'},
     {time:null,title:'Q6U1 4 HEL',badge:'other'},
     {time:null,title:'R8U1 1 HALv',badge:'other'},
@@ -840,7 +846,6 @@ const schedule2 = {
     {time:null,title:'P1U1 2 HEL',badge:'other'},
     {time:null,title:'D1U1 1 HALv',badge:'other'},
     {time:null,title:'Centrum Miljö 1 HALv',badge:'other'},
-    {time:null,title:'Centrum Soprum 1 HEL',badge:'sopor'},
     {time:null,title:'B3U1 Miljö 1 HALv',badge:'other'},
     {time:null,title:'Oron B1 2 HEL',badge:'other'},
     {time:null,title:'D2U1 1 HALv',badge:'other'},
@@ -853,12 +858,10 @@ const schedule2 = {
     {time:null,title:'MEDICARRIER',badge:'other'},
     {time:null,title:'LAPPAR',badge:'other'},
     {time:null,title:'WELL & MILJÖRUM',badge:'other'},
-    {time:null,title:'MATAVFALL',badge:'sopor'},
     {time:'10:30',title:'POST + REPRO',badge:'other'},
     {time:null,title:'GAS HUB1',badge:'other'},
     {time:'12:00',title:'GAS HUB1',badge:'other'},
     {time:null,title:'MEDICINLÅDA',badge:'med'},
-    {time:null,title:'SOPOR',badge:'sopor'},
     {time:null,title:'SKIFTA SOPKOMP',badge:'other'},
     {time:'11:30',title:'STERIL A206',badge:'steril'},
     {time:null,title:'Q6U1 4 HEL',badge:'other'},
@@ -1035,6 +1038,95 @@ let currentDay=getTodayKey();
 let checkedSet=new Set();
 let checkedBy={};
 let pagaendeSet=new Set();
+let assignedMap={};
+
+
+// ─── Teamleader / tilldelning ─────────────────────────────────────────────────
+let isLeader = localStorage.getItem('truckerLeader') === '1';
+let allUsers = [];
+let pendingAssignment = null;
+
+function setLeader(val){
+  isLeader = val;
+  localStorage.setItem('truckerLeader', val ? '1' : '0');
+  const el = document.getElementById('leaderBadge');
+  if(el) el.style.display = val ? '' : 'none';
+}
+
+async function fetchUsers(){
+  if(!authToken) return;
+  try{
+    const r = await fetch('/api/users', {headers:{'Authorization':'Bearer '+authToken}});
+    if(r.ok) allUsers = await r.json();
+  }catch{}
+}
+
+// Called by teamleader: open assign sheet for an item
+function openAssignSheet(idx, title, e){
+  e.stopPropagation();
+  if(!isLeader) return;
+  const sheet = document.getElementById('assignSheet');
+  document.getElementById('assignTaskLabel').textContent = title;
+  sheet._idx = idx;
+  sheet._title = title;
+  const list = document.getElementById('assignUserList');
+  list.innerHTML = allUsers
+    .filter(u => u.username !== currentUserName)
+    .map(u => `<button class="assign-user-btn" onclick="doAssign(${idx},'${title.replace(/'/g,"\'")}','${u.username}')">${u.username}${u.isLeader?'<span class=\"leader-badge\">LEADER</span>':''}</button>`)
+    .join('');
+  document.getElementById('assignOverlay').classList.remove('hidden');
+}
+
+function closeAssignSheet(e){
+  if(e && e.target !== document.getElementById('assignOverlay')) return;
+  document.getElementById('assignOverlay').classList.add('hidden');
+}
+
+async function doAssign(idx, title, toUser){
+  document.getElementById('assignOverlay').classList.add('hidden');
+  try{
+    await fetch('/api/assign',{
+      method:'POST',
+      headers:{'Content-Type':'application/json','Authorization':'Bearer '+authToken},
+      body: JSON.stringify({omrade:currentOmrade, day:currentDay, idx, title, to_user:toUser})
+    });
+    showToast('📋 Tilldelat till '+toUser);
+    await loadChecked();
+    renderSchedule();
+  }catch{ showToast('Fel vid tilldelning'); }
+}
+
+// Check for pending assignments (called during poll)
+async function checkPendingAssignments(){
+  if(!authToken) return;
+  try{
+    const r = await fetch('/api/assignments/pending',{headers:{'Authorization':'Bearer '+authToken}});
+    if(!r.ok) return;
+    const pending = await r.json();
+    if(pending.length > 0 && !pendingAssignment){
+      pendingAssignment = pending[0];
+      document.getElementById('notifTask').textContent =
+        `"${pendingAssignment.title}" – tilldelad av ${pendingAssignment.from_user}`;
+      document.getElementById('notifBanner').classList.add('show');
+    }
+  }catch{}
+}
+
+async function respondAssignment(accept){
+  if(!pendingAssignment) return;
+  document.getElementById('notifBanner').classList.remove('show');
+  try{
+    await fetch('/api/assignments/'+pendingAssignment.id+'/respond',{
+      method:'POST',
+      headers:{'Content-Type':'application/json','Authorization':'Bearer '+authToken},
+      body: JSON.stringify({accept})
+    });
+    showToast(accept ? '✅ Accepterat – uppgiften är din!' : '↩ Avböjt');
+    pendingAssignment = null;
+    await loadChecked();
+    renderSchedule();
+  }catch{}
+}
 
 // ─── Auth ────────────────────────────────────────────────────────────────────
 let authToken = localStorage.getItem('truckerToken') || '';
@@ -1060,7 +1152,10 @@ async function doLogin(){
     localStorage.setItem('truckerUser',currentUserName);
     document.getElementById('authOverlay').style.display='none';
     document.getElementById('userName').textContent=currentUserName;
+    setLeader(data.isLeader||false);
+    await fetchUsers();
     await loadChecked();
+    await checkPendingAssignments();
     renderDayTabs(); renderSchedule();
     startPolling();
   }catch{document.getElementById('authError').textContent='Kunde inte ansluta till servern';}
@@ -1079,7 +1174,10 @@ async function doRegister(){
     localStorage.setItem('truckerUser',currentUserName);
     document.getElementById('authOverlay').style.display='none';
     document.getElementById('userName').textContent=currentUserName;
+    setLeader(data.isLeader||false);
+    await fetchUsers();
     await loadChecked();
+    await checkPendingAssignments();
     renderDayTabs(); renderSchedule();
     startPolling();
   }catch{document.getElementById('authError').textContent='Kunde inte ansluta till servern';}
@@ -1107,9 +1205,11 @@ async function loadChecked(){
     if(!r.ok) return;
     const rows=await r.json();
     checkedSet=new Set(); checkedBy={}; pagaendeSet=new Set();
+    assignedMap={};
     rows.forEach(row=>{
       if(row.state==='done'){checkedSet.add(row.idx);checkedBy[row.idx]=row.by_user||'✓';}
       else if(row.state==='pagaende'){pagaendeSet.add(row.idx);checkedBy[row.idx]=row.by_user||'';}
+      else if(row.state==='assigned'){assignedMap[row.idx]={state:'assigned',assigned_to:row.assigned_to,by_user:row.by_user};}
     });
     setSyncIndicator('✓');
   }catch{setSyncIndicator('!');}
@@ -1131,6 +1231,7 @@ function startPolling(){
   if(pollInterval) clearInterval(pollInterval);
   pollInterval=setInterval(async()=>{
     await loadChecked();
+    await checkPendingAssignments();
     renderSchedule();
   }, 8000);
 }
@@ -1145,6 +1246,12 @@ let lopandeVisible = false;
 
 function renderSchedule(){
   const items=getSchedule()[currentDay]||[];
+  // Build lookup map idx→status for renderItem
+  const statusMap={};
+  [...checkedSet].forEach(i=>statusMap[i]={state:'done',by_user:checkedBy[i]});
+  [...pagaendeSet].forEach(i=>{ if(!statusMap[i]) statusMap[i]={state:'pagaende',by_user:checkedBy[i]}; });
+  // assigned entries come from loadChecked via assignedMap
+  Object.entries(assignedMap||{}).forEach(([i,v])=>{ if(!statusMap[i]) statusMap[i]=v; });
   const timedItems=items.map((item,idx)=>({item,idx})).filter(({item})=>item.time);
   const lopandeItems=items.map((item,idx)=>({item,idx})).filter(({item})=>!item.time);
 
@@ -1184,9 +1291,12 @@ function renderSchedule(){
     </div>`;
   }
 
+  const jitItems    = lopandeItems.filter(({item})=>item.badge==='jit');
+  const regularItems= lopandeItems.filter(({item})=>item.badge!=='jit');
+
   const doneLopande = lopandeItems.filter(({idx})=>checkedSet.has(idx)).length;
-  const pagLopande = lopandeItems.filter(({idx})=>pagaendeSet.has(idx)).length;
-  const totalLopande = lopandeItems.length;
+  const pagLopande  = lopandeItems.filter(({idx})=>pagaendeSet.has(idx)).length;
+  const totalLopande= lopandeItems.length;
 
   let html = '';
 
@@ -1206,7 +1316,13 @@ function renderSchedule(){
 
   if(lopandeVisible){
     html += `<div class="lopande-body">`;
-    html += lopandeItems.map(renderItem).join('');
+    // Regular (non-JIT) items first
+    html += regularItems.map(renderItem).join('');
+    // JIT subsection
+    if(jitItems.length>0){
+      html += `<div class="section-label" style="margin-top:10px;font-size:0.78rem;letter-spacing:0.08em;opacity:0.85">🚚 JIT – Just In Time</div>`;
+      html += jitItems.map(renderItem).join('');
+    }
     html += `</div>`;
   }
 
@@ -1330,7 +1446,10 @@ function showToast(msg){
       if(r.ok){
         document.getElementById('authOverlay').style.display='none';
         document.getElementById('userName').textContent=currentUserName;
+        setLeader(isLeader);
+        await fetchUsers();
         await loadChecked();
+        await checkPendingAssignments();
         renderDayTabs(); renderSchedule();
         startPolling();
       } else {
