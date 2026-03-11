@@ -270,16 +270,6 @@ position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:300;display:flex;align-
   </div>
 </div>
 
-<!-- Tilldela uppgift (teamleader) -->
-<div class="assign-overlay hidden" id="assignOverlay" onclick="closeAssignSheet(event)">
-  <div class="assign-sheet" id="assignSheet">
-    <div class="assign-title" id="assignSheetTitle">Tilldela uppgift</div>
-    <div class="assign-task" id="assignTaskLabel"></div>
-    <div class="assign-users" id="assignUserList"></div>
-    <button class="assign-cancel" onclick="closeAssignSheet()">Avbryt</button>
-  </div>
-</div>
-
 <!-- Anteckning modal -->
 <div class="note-modal-bg" id="noteModalBg" onclick="closeNoteModal(event)">
   <div class="note-modal">
@@ -291,16 +281,6 @@ position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:300;display:flex;align-
       <button class="note-clear-btn" onclick="clearNote()">Rensa</button>
       <button class="note-cancel-btn" onclick="closeNoteModal()">Avbryt</button>
     </div>
-  </div>
-</div>
-
-<!-- Notis-banner för inkommande förfrågan -->
-<div class="notif-banner" id="notifBanner">
-  <div class="notif-banner-title" id="notifBannerTitle">📋 Du har blivit tilldelad en uppgift</div>
-  <div class="notif-task" id="notifTask"></div>
-  <div class="notif-btns">
-    <button class="notif-accept" onclick="respondAssignment(true)">✓ Acceptera</button>
-    <button class="notif-decline" onclick="respondAssignment(false)">Avböj</button>
   </div>
 </div>
 <div class="sync-indicator" id="syncIndicator"></div>
