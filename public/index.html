@@ -1413,7 +1413,6 @@ function renderSchedule(){
       ${hasInfo?`<span class="info-btn" onclick="showLocPopup('${item.title.replace(/'/g,"\\'")}',event)">${hasFoto&&!hasLoc?'📷':'📍'}</span>`:''}
       <button class="note-btn ${noteData?'has-note':''}" onclick="openNoteModal(${idx},'${item.title.replace(/'/g,"\\'")}',event)" title="Anteckning">✏️</button>
       ${bl?`<div class="item-badge badge-${item.badge}">${bl}</div>`:''}
-      ${!done?`<button class="assign-btn" onclick="openAssignSheet(${idx},'${item.title.replace(/'/g,"\\'")}',event)" title="${isLeader?'Tilldela':'Skicka förfrågan'}">👤</button>`:''}
     </div>`;
   }
 
