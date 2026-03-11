@@ -1,4 +1,4 @@
-const CACHE = 'truckers-v1';
+const CACHE = 'truckers-v2';
 const ASSETS = ['/', '/manifest.json', '/icon-192.png'];
 
 self.addEventListener('install', e => {
@@ -14,9 +14,7 @@ self.addEventListener('activate', e => {
 });
 
 self.addEventListener('fetch', e => {
-  // API calls: network only
   if (e.request.url.includes('/api/')) return;
-  // Everything else: network first, fallback to cache
   e.respondWith(
     fetch(e.request)
       .then(res => {
@@ -25,5 +23,38 @@ self.addEventListener('fetch', e => {
         return res;
       })
       .catch(() => caches.match(e.request))
+  );
+});
+
+self.addEventListener('push', e => {
+  if (!e.data) return;
+  const data = e.data.json();
+  e.waitUntil(
+    self.registration.showNotification(data.title || 'Karolinska Truckers', {
+      body: data.body || '',
+      icon: '/icon-192.png',
+      badge: '/icon-192.png',
+      tag: data.tag || 'default',
+      renotify: true,
+      vibrate: [200, 100, 200],
+      data: { url: data.url || '/' }
+    })
+  );
+});
+
+self.addEventListener('notificationclick', e => {
+  e.notification.close();
+  const url = e.notification.data?.url || '/';
+  e.waitUntil(
+    clients.matchAll({ type: 'window', includeUncontrolled: true }).then(list => {
+      for (const client of list) {
+        if (client.url.includes(self.location.origin)) {
+          client.focus();
+          client.postMessage({ type: 'notification-click', url });
+          return;
+        }
+      }
+      return clients.openWindow(url);
+    })
   );
 });
