@@ -92,6 +92,7 @@ db.exec(`
     created   TEXT DEFAULT (datetime('now'))
   );
 `);
+try { db.exec(`ALTER TABLE users ADD COLUMN last_seen TEXT`); } catch {}
 
 function requireAuth(req, res, next) {
   const auth = req.headers.authorization;
@@ -334,15 +335,22 @@ app.delete('/api/chat/:id', requireAuth, (req, res) => {
 });
 
 app.get('/api/presence', requireAuth, (req, res) => {
-  const users = db.prepare(`SELECT username FROM users ORDER BY username`).all();
+  const users = db.prepare(`SELECT username, last_seen FROM users ORDER BY username`).all();
   const presMap = {};
   db.prepare(`SELECT username, status FROM presence`).all()
     .forEach(r => presMap[r.username] = r.status);
   const result = users.map(u => ({
     username: u.username,
-    status: presMap[u.username] || 'på plats'
+    status: presMap[u.username] || 'på plats',
+    last_seen: u.last_seen || null
   }));
   res.json(result);
+});
+
+// ── Heartbeat ─────────────────────────────────────────────────────────────────
+app.post('/api/heartbeat', requireAuth, (req, res) => {
+  db.prepare(`UPDATE users SET last_seen=datetime('now') WHERE username=?`).run(req.user.username);
+  res.json({ ok: true });
 });
 
 app.post('/api/presence', requireAuth, (req, res) => {

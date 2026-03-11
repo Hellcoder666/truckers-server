@@ -219,6 +219,9 @@ display:flex;align-items:center;justify-content:space-between;background:var(--s
   .dot-påplats{background:#a5d6a7;}
   .dot-sjuk{background:#ef5350;}
   .dot-ledigt{background:#ffb74d;}
+  .online-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;margin-left:6px;}
+  .online-dot.online{background:#4caf50;box-shadow:0 0 5px rgba(76,175,80,.8);}
+  .online-dot.offline{background:#2d3250;}
 position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:300;display:flex;align-items:flex-end;justify-content:center;}
   .assign-overlay.hidden{display:none;}
   .assign-sheet{background:var(--surface);border-radius:20px 20px 0 0;padding:24px 20px 36px;width:100%;max-width:480px;}
@@ -1330,10 +1333,17 @@ function startPolling(){
   if(pollInterval) clearInterval(pollInterval);
   pollInterval=setInterval(async()=>{
     await loadChecked();
-    await checkPendingAssignments();
     await loadChat(false);
     renderSchedule();
   }, 8000);
+  // Heartbeat every 30s to track online status
+  sendHeartbeat();
+  setInterval(sendHeartbeat, 30000);
+}
+
+async function sendHeartbeat(){
+  if(!authToken) return;
+  try{ await fetch('/api/heartbeat',{method:'POST',headers:{'Authorization':'Bearer '+authToken}}); }catch{}
 }
 
 function renderDayTabs(){
@@ -1546,6 +1556,9 @@ async function loadPresence(){
       const deleteBtn = isLeader && u.username !== currentUserName
         ? `<button class="delete-user-btn" onclick="deleteUser('${u.username}')" title="Ta bort konto">🗑</button>`
         : '';
+      // Online = seen within last 2 minutes
+      const isOnline = u.last_seen && (Date.now() - new Date(u.last_seen + 'Z').getTime()) < 2 * 60 * 1000;
+      const onlineDot = `<div class="online-dot ${isOnline?'online':'offline'}" title="${isOnline?'Online':'Offline'}"></div>`;
       const btns = canChange ? `
         <div class="presence-btns">
           <button class="presence-btn ${u.status==='på plats'?'active-påplats':''}" onclick="setPresence('${u.username}','på plats')">✅ På plats</button>
@@ -1557,7 +1570,7 @@ async function loadPresence(){
           <div style="display:flex;align-items:center">
             <div class="presence-dot dot-${st}"></div>
             <div>
-              <div class="presence-name">${u.username}${u.username===currentUserName?' (du)':''}</div>
+              <div class="presence-name" style="display:flex;align-items:center;gap:4px">${u.username}${u.username===currentUserName?' (du)':''}${onlineDot}</div>
             </div>
           </div>
           ${deleteBtn}
