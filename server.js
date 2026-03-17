@@ -174,7 +174,13 @@ app.post('/api/status', requireAuth, async (req, res) => {
   if (!['none','pagaende','done'].includes(state)) return res.status(400).json({ error: 'Ogiltigt state' });
   const by_user = state === 'none' ? null : req.user.username;
   try {
-    await SB.post('status', { omrade: parseInt(omrade), day, idx: parseInt(idx), state, by_user, updated: new Date().toISOString() }, true);
+    // Use on_conflict to specify the unique columns for upsert
+    const h = { ...SB.headers, 'Prefer': 'resolution=merge-duplicates,return=representation' };
+    const r = await fetch(`${SUPABASE_URL}/rest/v1/status?on_conflict=omrade,day,idx`, {
+      method: 'POST', headers: h,
+      body: JSON.stringify({ omrade: parseInt(omrade), day, idx: parseInt(idx), state, by_user, updated: new Date().toISOString() })
+    });
+    if (!r.ok) throw new Error(`status upsert: ${r.status} ${await r.text()}`);
     res.json({ ok: true });
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
@@ -276,7 +282,12 @@ app.post('/api/presence', requireAuth, async (req, res) => {
   if (username !== req.user.username && !req.user.isLeader) return res.status(403).json({ error: 'Ej tillåtet' });
   if (!['på plats','sjuk','ledigt'].includes(status)) return res.status(400).json({ error: 'Ogiltig status' });
   try {
-    await SB.post('presence', { username, status, updated: new Date().toISOString() }, true);
+    const ph = { ...SB.headers, 'Prefer': 'resolution=merge-duplicates,return=representation' };
+    const pr = await fetch(`${SUPABASE_URL}/rest/v1/presence?on_conflict=username`, {
+      method: 'POST', headers: ph,
+      body: JSON.stringify({ username, status, updated: new Date().toISOString() })
+    });
+    if (!pr.ok) throw new Error(`presence upsert: ${pr.status} ${await pr.text()}`);
     res.json({ ok: true });
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
@@ -304,7 +315,12 @@ app.post('/api/notes', requireAuth, async (req, res) => {
     if (!trimmed) {
       await SB.del('notes', `?omrade=eq.${omrade}&day=eq.${encodeURIComponent(day)}&idx=eq.${idx}`);
     } else {
-      await SB.post('notes', { omrade: parseInt(omrade), day, idx: parseInt(idx), note: trimmed, by_user: req.user.username, updated: new Date().toISOString() }, true);
+      const nh = { ...SB.headers, 'Prefer': 'resolution=merge-duplicates,return=representation' };
+      const nr = await fetch(`${SUPABASE_URL}/rest/v1/notes?on_conflict=omrade,day,idx`, {
+        method: 'POST', headers: nh,
+        body: JSON.stringify({ omrade: parseInt(omrade), day, idx: parseInt(idx), note: trimmed, by_user: req.user.username, updated: new Date().toISOString() })
+      });
+      if (!nr.ok) throw new Error(`notes upsert: ${nr.status} ${await nr.text()}`);
     }
     res.json({ ok: true });
   } catch(e) { res.status(500).json({ error: e.message }); }
